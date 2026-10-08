@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f6fb2">
+<title>Llamadas Vaselina</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--tx:#14202b;--mu:#5d6b78;--bd:#dde3e9;--az:#1f6fb2;--ver:#1a8a4a;--rj:#c0392b;--am:#b7791f}
+@media(prefers-color-scheme:dark){:root{--bg:#10171d;--card:#18222b;--tx:#e8eef3;--mu:#93a1ad;--bd:#27333e;--az:#4a9be0;--ver:#3ec17a;--rj:#e8685a;--am:#e0a84a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,sans-serif;padding-bottom:40px}
+header{background:var(--az);color:#fff;padding:14px 16px;position:sticky;top:0;z-index:5}
+header h1{margin:0;font-size:18px}header small{opacity:.85}
+.wrap{max-width:640px;margin:0 auto;padding:0 16px}
+#login{max-width:340px;margin:20vh auto;padding:0 16px;text-align:center}
+input,textarea,select{width:100%;font:inherit;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx)}
+button{font:inherit;border:0;border-radius:10px;padding:12px;cursor:pointer;background:var(--az);color:#fff;font-weight:600}
+.tabs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}
+.tab{background:var(--card);color:var(--tx);border:2px solid var(--bd);text-align:left;padding:10px 12px}
+.tab b{display:block;font-size:22px}.tab span{font-size:13px;color:var(--mu)}
+.tab.on{border-color:var(--az)}
+.row{display:flex;gap:8px;margin-bottom:10px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
+.card h3{margin:0 0 2px;font-size:16px}.mu{color:var(--mu);font-size:13px}
+.tel{display:block;margin:8px 0;padding:12px;text-align:center;background:var(--ver);color:#fff;border-radius:10px;font-weight:700;text-decoration:none;font-size:18px}
+.bt{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0}
+.bt button{padding:10px 4px;font-size:13px;background:var(--bg);color:var(--tx);border:2px solid var(--bd)}
+.bt button.on.c{background:var(--ver);color:#fff;border-color:var(--ver)}
+.bt button.on.n{background:var(--rj);color:#fff;border-color:var(--rj)}
+.bt button.on.p{background:var(--am);color:#fff;border-color:var(--am)}
+textarea{min-height:60px}
+.pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;background:var(--bg);border:1px solid var(--bd);margin-right:4px}
+#err{color:var(--rj);min-height:22px}
+</style></head><body>
+<div id="login"><h1>📞 Llamadas Vaselina</h1><p class="mu">Escribe tu celular</p>
+<input id="cl" type="tel" inputmode="numeric" placeholder="Celular" autocomplete="off"><p id="err"></p><button id="ent" style="width:100%">Entrar</button></div>
+<div id="app" hidden>
+<header><div class="wrap"><h1>📞 Llamadas Vaselina</h1><small id="sub"></small></div></header>
+<div class="wrap">
+<div class="tabs" id="tabs"></div>
+<div class="row"><input id="q" type="search" placeholder="Buscar nombre, ciudad, NIT…"><select id="fu" style="max-width:150px"><option value="">Todas</option></select></div>
+<div id="lista"></div><button id="mas" style="width:100%;display:none">Ver más</button>
+</div></div>
+<script>
+const URL_='https://fnayedgvamxktxfvywwl.supabase.co',KEY='sb_publishable_NVTYNkJ0V6obLwgwjXza1g_3Ihp-xMv',VER='20261007-1';
+let D=[],clave='',cajon='pend',pag=30;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function rpc(fn,args){const r=await fetch(URL_+'/rest/v1/rpc/'+fn,{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json'},body:JSON.stringify(args)});
+  if(!r.ok)throw new Error(r.status);const t=await r.text();return t?JSON.parse(t):null}
+const tieneTel=p=>(p.telefono||'').replace(/\D/g,'').length>=7;
+const caja=p=>p.estado==='contactado'?'cont':p.estado==='no_interesado'?'no':(p.estado==='sin_telefono'||!tieneTel(p))?'sin':'pend';
+const NOM={pend:'Pendientes',cont:'Contactados',no:'No interesados',sin:'Sin teléfono'};
+async function entrar(c){const d=c.replace(/\D/g,'');$('err').textContent='';
+  try{D=await rpc('vas_lista',{p_clave:d});clave=d;try{localStorage.vas_clave=d}catch(e){}
+    $('login').hidden=true;$('app').hidden=false;
+    const fs=[...new Set(D.map(p=>p.fuente))].sort();$('fu').innerHTML='<option value="">Todas</option>'+fs.map(f=>`<option>${esc(f)}</option>`).join('');pintar()}
+  catch(e){try{localStorage.removeItem('vas_clave')}catch(_){}$('err').textContent='Ese celular no tiene acceso'}}
+function filtrar(){const q=$('q').value.toLowerCase().trim(),f=$('fu').value;
+  return D.filter(p=>caja(p)===cajon&&(!f||p.fuente===f)&&(!q||(p.nombre+' '+p.ciudad+' '+p.nit+' '+p.telefono).toLowerCase().includes(q)))}
+function pintar(){const n={pend:0,cont:0,no:0,sin:0};D.forEach(p=>n[caja(p)]++);
+  $('sub').textContent=`${n.pend} por llamar · ${D.length} en total`;
+  $('tabs').innerHTML=Object.keys(NOM).map(k=>`<button class="tab ${k===cajon?'on':''}" data-k="${k}"><b>${n[k]}</b><span>${NOM[k]}</span></button>`).join('');
+  const L=filtrar();$('lista').innerHTML=L.slice(0,pag).map(card).join('')||'<p class="mu" style="text-align:center">Nada aquí</p>';
+  $('mas').style.display=L.length>pag?'block':'none';$('mas').textContent=`Ver más (${L.length-pag})`}
+function card(p){const t=tieneTel(p),e=p.estado;
+  return `<div class="card" data-id="${p.id}"><h3>${esc(p.nombre)}</h3>
+  <div class="mu">${esc(p.ciudad||'—')}${p.nit?' · NIT '+esc(p.nit):''}</div>
+  <div style="margin:4px 0"><span class="pill">${esc(p.fuente)}</span><span class="pill">${esc(p.tipo)}</span></div>
+  ${p.productos?`<div class="mu">${esc(p.productos)}</div>`:''}
+  ${t?`<a class="tel" href="tel:${esc(p.telefono.replace(/\D/g,''))}">📞 ${esc(p.telefono)}</a>`:
+   `<div class="row" style="margin-top:8px"><input type="tel" inputmode="numeric" placeholder="Agregar teléfono" class="nt"><button class="gt" style="white-space:nowrap">Guardar</button></div>`}
+  <div class="bt"><button class="c ${e==='contactado'?'on':''}" data-e="contactado">✅ Contactado</button>
+  <button class="n ${e==='no_interesado'?'on':''}" data-e="no_interesado">❌ No interesa</button>
+  <button class="p ${e==='pendiente'?'on':''}" data-e="pendiente">⏳ Pendiente</button></div>
+  <textarea class="nota" placeholder="Notas…">${esc(p.notas)}</textarea></div>`}
+async function guardar(p,est,notas){const a=p.estado,b=p.notas;p.estado=est;p.notas=notas;
+  try{await rpc('vas_marcar',{p_clave:clave,p_id:p.id,p_estado:est,p_notas:notas})}catch(e){p.estado=a;p.notas=b;alert('No se guardó, revisa la señal');pintar()}}
+const prod=el=>D.find(p=>p.id==el.closest('.card').dataset.id);
+$('ent').onclick=()=>entrar($('cl').value);$('cl').onkeydown=e=>{if(e.key==='Enter')entrar($('cl').value)};
+$('tabs').onclick=e=>{const b=e.target.closest('.tab');if(b){cajon=b.dataset.k;pag=30;pintar()}};
+$('q').oninput=$('fu').onchange=()=>{pag=30;pintar()};
+$('mas').onclick=()=>{pag+=30;pintar()};
+$('lista').onclick=async e=>{const p=e.target.closest('.card')&&prod(e.target);if(!p)return;
+  const be=e.target.closest('[data-e]');
+  if(be){const nt=be.closest('.card').querySelector('.nota').value;await guardar(p,be.dataset.e,nt);pintar()}
+  if(e.target.classList.contains('gt')){const v=e.target.closest('.card').querySelector('.nt').value;
+    try{await rpc('vas_tel',{p_clave:clave,p_id:p.id,p_tel:v});p.telefono=v.replace(/\D/g,'');pintar()}catch(_){alert('No se guardó')}}};
+$('lista').addEventListener('focusout',async e=>{if(!e.target.classList.contains('nota'))return;const p=prod(e.target);
+  if(p&&e.target.value!==p.notas)await guardar(p,p.estado,e.target.value)});
+try{if(localStorage.vas_clave)entrar(localStorage.vas_clave)}catch(e){}
+</script></body></html>
